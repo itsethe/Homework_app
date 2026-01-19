@@ -1,3 +1,10 @@
 How to use:
 cd homework_app
 npx expo start --tunnel
+
+
+for mac users:
+cd homework_app
+npx expo start
+
+CAN ONLY RUN ON ONE SERVER
