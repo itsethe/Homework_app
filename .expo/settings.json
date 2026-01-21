@@ -3,6 +3,10 @@
   "lanType": "ip",
   "dev": true,
   "minify": false,
+<<<<<<< HEAD
   "urlRandomness": "TxvVyBY",
+=======
+  "urlRandomness": null,
+>>>>>>> fa8d4c2b26d9ea2183e41f80d9fe1b9f86a8c19b
   "https": false
 }
