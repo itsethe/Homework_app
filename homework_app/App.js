@@ -14,6 +14,9 @@ export default class App extends React.Component{
     return(
       <NavigationContainer>
         <Stack.Navigator>
+          {/* Below Removes the 'Home Button' will eventually do that but need to add */}
+          {/* Buttons to do so, so remove the top stack navigator and uncomment button when done */}
+        {/* <Stack.Navigator screenOptions={{headerShown: false}}> */}
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="URL_page" component={URL_page} />
           <Stack.Screen name="Homework" component={Homework} />
