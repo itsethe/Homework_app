@@ -1,5 +1,5 @@
 import React from 'react'
-import {View, Text} from 'react-native'
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native'
 
 export default class URL_page extends React.Component{
     render(){
