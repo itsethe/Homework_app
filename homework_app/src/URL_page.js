@@ -1,24 +1,64 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import ICAL from "ical.js";
 
-export default function URL_page({ navigation, route }) {
+export default function URL_page({ navigation }) {
   const [link, setLink] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Small helper: clean + basic validate
   const normalizeLink = (raw) => (raw || "").trim();
 
-  // Optional: nicer date formatting in logs
-  const formatDate = (d) => {
-    try {
-      return d.toLocaleString();
-    } catch {
-      return String(d);
-    }
-  };
+  function parseAssignmentsFromIcsText(icsText) {
+    const jcalData = ICAL.parse(icsText);
+    const comp = new ICAL.Component(jcalData);
+    const vevents = comp.getAllSubcomponents("vevent");
 
-  async function print_assignments() {
+    const assignments = vevents
+      .map((v) => {
+        const event = new ICAL.Event(v);
+
+        const title = event.summary || "Untitled";
+
+        // Brightspace often uses DTEND as due, fallback to DTSTART
+        const dueJSDate = event.endDate
+          ? event.endDate.toJSDate()
+          : event.startDate
+          ? event.startDate.toJSDate()
+          : null;
+
+        if (!dueJSDate) return null;
+
+        // ✅ Pull description from common fields
+        const description =
+          event.description ||
+          v.getFirstPropertyValue("description") ||
+          v.getFirstPropertyValue("x-alt-desc") ||
+          "";
+
+        const id = String(event.uid || `${title}-${dueJSDate.getTime()}`);
+
+        return {
+          id,
+          title,
+          due: dueJSDate.toISOString(),
+          description: String(description),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(a.due) - new Date(b.due));
+
+    return assignments;
+  }
+
+  async function onSubmit() {
     const url = normalizeLink(link);
 
     if (!url) {
@@ -27,8 +67,10 @@ export default function URL_page({ navigation, route }) {
     }
 
     if (!url.toLowerCase().includes(".ics")) {
-      Alert.alert("Doesn't look like an .ics feed", "Make sure the link ends with .ics");
-      // still allow it to run if you want — return to block, or remove return to allow
+      Alert.alert(
+        "Doesn't look like an .ics feed",
+        "Make sure the link ends with .ics"
+      );
       return;
     }
 
@@ -37,54 +79,30 @@ export default function URL_page({ navigation, route }) {
     try {
       const res = await fetch(url, {
         method: "GET",
-        headers: {
-          Accept: "text/calendar, text/plain, */*",
-        },
+        headers: { Accept: "text/calendar, text/plain, */*" },
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status} ${res.statusText}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 
       const icsText = await res.text();
       if (!icsText || !icsText.includes("BEGIN:VCALENDAR")) {
         throw new Error("Response was not an iCalendar (.ics) file.");
       }
 
-      const jcalData = ICAL.parse(icsText);
-      const comp = new ICAL.Component(jcalData);
-      const vevents = comp.getAllSubcomponents("vevent");
+      const assignments = parseAssignmentsFromIcsText(icsText);
 
-      if (!vevents.length) {
-        console.log("No events found in this calendar feed.");
-        Alert.alert("No events found", "The feed loaded, but it didn't contain any events.");
+      if (!assignments.length) {
+        Alert.alert("No events found", "The feed loaded, but had no events.");
         return;
       }
 
-      console.log(`Found ${vevents.length} events. Printing: "Assignment - Due Date"`);
+      // ✅ SAVE LOCALLY
+      await AsyncStorage.setItem("assignments", JSON.stringify(assignments));
+      await AsyncStorage.setItem("ics_link", url);
 
-      vevents.forEach((v) => {
-        const event = new ICAL.Event(v);
-
-        const assignmentName = event.summary || "Untitled";
-
-        // Brightspace often uses DTEND as the "due" time; fallback to DTSTART if needed.
-        const dueJSDate = event.endDate
-          ? event.endDate.toJSDate()
-          : event.startDate
-          ? event.startDate.toJSDate()
-          : null;
-
-        const dueDate = dueJSDate ? formatDate(dueJSDate) : "No due date";
-
-        console.log(`${assignmentName} - ${dueDate}`);
-      });
+      navigation.navigate("Homework");
     } catch (err) {
-      console.error("Error reading calendar:", err);
-      Alert.alert(
-        "Couldn't load calendar",
-        String(err?.message || err)
-      );
+      Alert.alert("Couldn't load calendar", String(err?.message || err));
     } finally {
       setIsLoading(false);
     }
@@ -92,9 +110,11 @@ export default function URL_page({ navigation, route }) {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.header}>Brightspace ICS Import</Text>
+
       <TextInput
         style={styles.input}
-        placeholder="Enter Link"
+        placeholder="Enter Brightspace .ics Link"
         placeholderTextColor="grey"
         value={link}
         onChangeText={setLink}
@@ -104,7 +124,7 @@ export default function URL_page({ navigation, route }) {
 
       <TouchableOpacity
         style={[styles.submit_link_cont, isLoading && styles.disabled]}
-        onPress={print_assignments}
+        onPress={onSubmit}
         disabled={isLoading}
       >
         <Text style={styles.submit_button}>
@@ -116,29 +136,25 @@ export default function URL_page({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-  },
+  container: { padding: 20 },
+  header: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
   input: {
     borderWidth: 1,
     borderColor: "black",
     height: 44,
     paddingHorizontal: 10,
+    borderRadius: 8,
   },
   submit_link_cont: {
     backgroundColor: "#75909C",
     padding: 10,
     marginTop: 20,
-    height: 40,
-    width: "30%",
+    height: 44,
+    width: "40%",
     justifyContent: "center",
     alignItems: "center",
+    borderRadius: 8,
   },
-  submit_button: {
-    color: "white",
-    fontWeight: "600",
-  },
-  disabled: {
-    opacity: 0.6,
-  },
+  submit_button: { color: "white", fontWeight: "600" },
+  disabled: { opacity: 0.6 },
 });

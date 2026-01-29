@@ -22,7 +22,7 @@ export default class Home extends React.Component{
                 <TouchableOpacity style={styles.buttonCont_deadlines} onPress={()=>{
                     this.props.navigation.navigate('Deadlines')
                 }}>
-                    <Text style={styles.deadlines_button}>Important Upcoming Deadlines</Text>
+                    <Text style={styles.deadlines_button}>Upcoming Deadlines</Text>
                 </TouchableOpacity>
 
             </View>
@@ -43,19 +43,21 @@ const styles = StyleSheet.create({
 buttonCont_hw: {
     backgroundColor: '#75909C',
     padding: 10,
-    borderRadius: 33.33,
+    borderRadius: 8,
     marginTop: 20,
     height: 55,
-    width: "55%",
+    width: "60%",
     justifyContent: "center",
     alignItems: "center",
+
+    
   },
 
   
   buttonCont_assign: {
     backgroundColor: '#75909C',
     padding: 10,
-    borderRadius: 33.33,
+    borderRadius: 8,
     marginTop: 20,
     height: 55,
     width: "50%",
@@ -66,12 +68,13 @@ buttonCont_hw: {
   buttonCont_deadlines: {
     backgroundColor: '#75909C',
     padding: 10,
-    borderRadius: 33.33,
+    borderRadius: 8,
     marginTop: 20,
     height: 55,
     width: "60%",
     justifyContent: "center",
     alignItems: "center",
+    
   },
   
   hw_button: {
